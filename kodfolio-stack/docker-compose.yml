@@ -1,0 +1,78 @@
+# Корневой docker-compose, запускающий весь стек KODfolio:
+#   - PostgreSQL
+#   - Redis
+#   - Django backend (порт 8000)
+#   - Angular frontend (порт 4200)
+#
+# Использование:
+#   docker compose up --build
+#
+# После запуска:
+#   - Frontend: http://localhost:4200
+#   - Backend API: http://localhost:8000/api/v1/
+#   - Swagger: http://localhost:8000/api/docs/
+#   - Django Admin: http://localhost:8000/admin/
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kodfolio_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kodfolio}
+      POSTGRES_USER: ${POSTGRES_USER:-kodfolio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kodfolio_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kodfolio}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kodfolio_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ../kodfolio-backend
+    container_name: kodfolio_backend
+    env_file:
+      - ../kodfolio-backend/.env
+    volumes:
+      - ../kodfolio-backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python manage.py runserver 0.0.0.0:8000
+
+  frontend:
+    build:
+      context: ../kodfolio-frontend
+    container_name: kodfolio_frontend
+    volumes:
+      - ../kodfolio-frontend:/app
+      - /app/node_modules
+    ports:
+      - "4200:4200"
+    depends_on:
+      - backend
+    environment:
+      # Внутри контейнера ng serve должен слушать на 0.0.0.0
+      NG_CLI_ANALYTICS: "false"
+
+volumes:
+  postgres_data:

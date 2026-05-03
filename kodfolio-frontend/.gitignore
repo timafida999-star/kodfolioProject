@@ -1,0 +1,22 @@
+# Compiled output
+dist/
+out-tsc/
+bazel-out/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.idea/
+.vscode/
+.project
+.classpath
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db
